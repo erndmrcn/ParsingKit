@@ -30,7 +30,7 @@ public struct Flexible<T: LosslessStringConvertible & Decodable>: Decodable {
 }
 
 public typealias FlexibleInt = Flexible<Int>
-public typealias FlexibleDouble = Flexible<Double>
+//public typealias FlexibleDouble = Flexible<Double>
 
 // MARK: - OneOrMany: decode T or [T] as [T]
 
@@ -45,9 +45,8 @@ public struct OneOrMany<T: Decodable>: Decodable {
 }
 
 // MARK: - Vec3Constructible + FlexibleVec3
-
 public protocol Vec3Constructible {
-    static func makeVec3(x: Double, y: Double, z: Double) -> Self
+    init(_ x: Double, _ y: Double, _ z: Double)
 }
 
 extension SIMD3: Vec3Constructible where Scalar == Double {
@@ -61,30 +60,32 @@ extension SIMD3 where Scalar == Float {
 @propertyWrapper
 public struct FlexibleVec3<T: Vec3Constructible>: Decodable {
     public var wrappedValue: T
-
     public init(wrappedValue: T) { self.wrappedValue = wrappedValue }
-
     public init(from decoder: Decoder) throws {
-        // Accept string "x y z" or array [x,y,z]
+        // string "x y z"
         if let s = try? decoder.singleValueContainer().decode(String.self) {
-            let parts = s.split { $0.isWhitespace }
-            guard parts.count >= 3, let x = Double(parts[0]), let y = Double(parts[1]), let z = Double(parts[2]) else {
-                throw PKDecodingError.expectedVector("Vec3 requires 3 components")
-            }
-            wrappedValue = T.makeVec3(x: x, y: y, z: z)
-            return
+            let nums = s.split(whereSeparator: \.isWhitespace).compactMap { Double($0) }
+            if nums.count == 3 { wrappedValue = T(nums[0], nums[1], nums[2]); return }
         }
-        if var arr = try? decoder.unkeyedContainer() {
-            func next() throws -> Double {
-                if let d = try? arr.decode(Double.self) { return d }
-                if let i = try? arr.decode(Int.self) { return Double(i) }
-                if let s = try? arr.decode(String.self), let d = Double(s) { return d }
-                throw PKDecodingError.expectedVector("Invalid vec3 element")
-            }
-            let x = try next(), y = try next(), z = try next()
-            wrappedValue = T.makeVec3(x: x, y: y, z: z)
-            return
+        // array [x,y,z]
+        if var c = try? decoder.unkeyedContainer() {
+            let x = (try? c.decode(Double.self)) ?? 0
+            let y = (try? c.decode(Double.self)) ?? 0
+            let z = (try? c.decode(Double.self)) ?? 1
+            wrappedValue = T(x, y, z); return
         }
-        throw PKDecodingError.expectedVector("Expected vec3 as string or array")
+        // dict {"x":..,"y":..,"z":..}
+        if let c = try? decoder.container(keyedBy: AnyKey.self) {
+            let x = (try? c.decode(Double.self, forKey: AnyKey("x"))) ?? 0
+            let y = (try? c.decode(Double.self, forKey: AnyKey("y"))) ?? 0
+            let z = (try? c.decode(Double.self, forKey: AnyKey("z"))) ?? 1
+            wrappedValue = T(x, y, z); return
+        }
+        wrappedValue = T(0, 0, 1)
+    }
+    private struct AnyKey: CodingKey {
+        var stringValue: String; init(_ s: String) { stringValue = s }
+        init?(stringValue: String) { self.stringValue = stringValue }
+        var intValue: Int? = nil; init?(intValue: Int) { return nil }
     }
 }

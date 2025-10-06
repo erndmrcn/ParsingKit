@@ -6,10 +6,15 @@ let package = Package(
     defaultLocalization: "en",
     platforms: [ .iOS(.v14), .macOS(.v12), .tvOS(.v14) ],
     products: [ .library(name: "ParsingKit", targets: ["ParsingKit"]) ],
+    dependencies: [
+        .package(url: "https://github.com/CoreOffice/XMLCoder.git", from: "0.17.1")
+    ],
     targets: [
         .target(
             name: "ParsingKit",
-            dependencies: [],
+            dependencies: [
+                .product(name: "XMLCoder", package: "XMLCoder")
+            ],
             path: "Sources/ParsingKit",
             swiftSettings: [
                 .define("PARSINGKIT_SIMD_DOUBLE", .when(configuration: .release))
