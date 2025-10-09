@@ -2,84 +2,75 @@
 //  SceneLoader.swift
 //  ParsingKit
 //
-//  Created by Eren Demircan on 6.10.2025.
+//  Created by Eren Demircan on 7.10.2025.
 //
 
 import Foundation
-import XMLCoder
 
-public enum SceneFormat: String { case json, xml }
+public enum SceneSource {
+    case data(Data, format: Format)
+    case url(URL)
+    public enum Format { case json, xml, auto }
+}
 
-public struct SceneLoader {
-    public struct Options: Sendable {
-        public var maxBytes: Int = 10 * 1024 * 1024           // 10 MB cap
-        public var allowNaN: Bool = false                     // reject NaN/Inf by default
-        public var collectIssues: IssueCollector? = nil
-        public init() {}
-    }
+public enum SceneLoadError: Error {
+    case unreadable
+    case decodingFailed(Error)
+}
 
-    public static func load<T: Decodable>(
-        _ type: T.Type,
-        from url: URL,
-        options: Options = .init()
-    ) throws -> T {
-        let data = try readSafely(url: url, maxBytes: options.maxBytes)
-        let fmt = detectFormat(data)
-        switch fmt {
-        case .json: return try decodeJSON(T.self, data: data, options: options)
-        case .xml:  return try decodeXML(T.self, data: data, options: options)
+public enum SceneLoader {
+    /// Load a scene from data/URL. If format is `.auto`, it detects by file extension or leading char.
+    public static func load(_ source: SceneSource, rootKey: String = "Scene") throws -> Scene {
+        let data: Data
+        let format: SceneSource.Format
+
+        switch source {
+        case .data(let d, let f): data = d; format = f
+        case .url(let url):
+            guard let d = try? Data(contentsOf: url) else { throw SceneLoadError.unreadable }
+            data = d
+            let ext = url.pathExtension.lowercased()
+            format = (ext == "json") ? .json : (ext == "xml" ? .xml : .auto)
+        }
+
+        let jsonData: Data
+        switch format {
+        case .json:
+            jsonData = data
+        case .xml:
+            jsonData = XML2JSON.convert(data)
+        case .auto:
+            if data.firstNonWhitespace() == UInt8(ascii: "{") {
+                jsonData = data
+            } else {
+                jsonData = XML2JSON.convert(data)
+            }
+        }
+
+        // Decode with same model from a synthetic JSON { "Scene": ... } OR direct root
+        // Try { "Scene": ... } first:
+        let decoder = JSONDecoder()
+        decoder.userInfo[.init(rawValue: "rootKey")!] = rootKey
+
+        // First attempt: { "Scene": ... }
+        if let top = try? decoder.decode([String: Scene].self, from: jsonData), let sc = top[rootKey] {
+            return sc
+        }
+
+        // Second attempt: direct scene body
+        do {
+            return try decoder.decode(Scene.self, from: jsonData)
+        } catch {
+            throw SceneLoadError.decodingFailed(error)
         }
     }
+}
 
-    public static func load<T: Decodable>(
-        _ type: T.Type,
-        from data: Data,
-        options: Options = .init()
-    ) throws -> T {
-        switch detectFormat(data) {
-        case .json: return try decodeJSON(T.self, data: data, options: options)
-        case .xml:  return try decodeXML(T.self, data: data, options: options)
+private extension Data {
+    func firstNonWhitespace() -> UInt8? {
+        for b in self {
+            if !Character(UnicodeScalar(b)).isWhitespace { return b }
         }
-    }
-
-    // MARK: detection & decoders
-
-    private static func detectFormat(_ data: Data) -> SceneFormat {
-        // Skip BOM/whitespace and peek first non-space char
-        let prefix = String(decoding: data.prefix(64), as: UTF8.self)
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        return prefix.first == "<" ? .xml : .json
-    }
-
-    private static func decodeJSON<T: Decodable>(_ type: T.Type, data: Data, options: Options) throws -> T {
-        let dec = JSONDecoder()
-        // stricter by default
-        if !options.allowNaN {
-            dec.nonConformingFloatDecodingStrategy = .throw
-        }
-        // helpful: preserve key order if you ever re-encode for debugging
-        #if !os(Linux)
-        if #available(iOS 15, macOS 12, *) { dec.allowsJSON5 = true } // tolerate comments/trailing commas in authoring
-        #endif
-        return try dec.decode(T.self, from: data)
-    }
-
-    private static func decodeXML<T: Decodable>(_ type: T.Type, data: Data, options: Options) throws -> T {
-        let dec = XMLDecoder()
-        // most XML scene files use element names in PascalCase or camelCase — tweak as needed
-        dec.keyDecodingStrategy = .useDefaultKeys
-        dec.trimValueWhitespaces = true
-        dec.shouldProcessNamespaces = false   // security: ignore external namespaces
-        return try dec.decode(T.self, from: data)
-    }
-
-    private static func readSafely(url: URL, maxBytes: Int) throws -> Data {
-        // Restrict to file URLs and prevent directory traversal if you later pass user paths.
-        guard url.isFileURL else { throw NSError(domain: "ParsingKit", code: 1, userInfo: [NSLocalizedDescriptionKey: "Only local files are allowed"]) }
-        let r = try url.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey])
-        guard r.isRegularFile == true else { throw NSError(domain: "ParsingKit", code: 2, userInfo: [NSLocalizedDescriptionKey: "Not a regular file"]) }
-        let size = r.fileSize ?? 0
-        guard size <= maxBytes else { throw NSError(domain: "ParsingKit", code: 3, userInfo: [NSLocalizedDescriptionKey: "File too large (\(size) bytes)"]) }
-        return try Data(contentsOf: url, options: .mappedIfSafe)
+        return nil
     }
 }
