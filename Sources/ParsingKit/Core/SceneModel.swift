@@ -66,7 +66,7 @@ public struct Camera: Decodable {
 
 let pi4 = 1.0 //4.0 * .pi
 
-public struct Material: Decodable {
+public struct Material: @unchecked Sendable, Decodable {
     public var id: String? = nil
     public var type: String? = nil
     public var ambient:  Vec3 = .zero

@@ -8,7 +8,7 @@
 import Foundation
 import simd
 
-open class SceneObject: Decodable {
+open class SceneObject: @unchecked Sendable, Decodable {
     public var id: String? = nil
     public var material: String?
     public init() {}
