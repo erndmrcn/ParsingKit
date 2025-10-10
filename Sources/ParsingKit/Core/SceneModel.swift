@@ -74,7 +74,8 @@ public struct Material: @unchecked Sendable, Decodable {
     public var specular: Vec3 = .zero
     public var phong:    Scalar = 1
     public var mirror:   Vec3 = .zero
-    public var ior:      Scalar = 1.5
+    /// index of refraction
+    public var ior:      Scalar = 0
     public var absorption: Vec3 = .zero
     enum CodingKeys: String, CodingKey {
         case id = "_id", type = "_type"

@@ -18,6 +18,36 @@ public enum SceneLoadError: Error {
     case decodingFailed(Error)
 }
 
+enum ScopedReadError: LocalizedError {
+    case noSecurityScope, providerFailed(underlying: Error), emptyData
+    var errorDescription: String? {
+        switch self {
+        case .noSecurityScope: return "Could not start security-scoped access."
+        case .providerFailed(let e): return "File provider denied read: \(e.localizedDescription)"
+        case .emptyData: return "Read returned empty data."
+        }
+    }
+}
+
+@discardableResult
+func readSecurityScopedData(from url: URL) throws -> Data {
+    let didStart = url.startAccessingSecurityScopedResource()
+    guard didStart else { throw ScopedReadError.noSecurityScope }
+    defer { url.stopAccessingSecurityScopedResource() }
+
+    let coordinator = NSFileCoordinator(filePresenter: nil)
+    var coordError: NSError?
+    var payload: Data?
+
+    coordinator.coordinate(readingItemAt: url, options: .withoutChanges, error: &coordError) { readableURL in
+        payload = try? Data(contentsOf: readableURL, options: [.mappedIfSafe])
+    }
+
+    if let err = coordError { throw ScopedReadError.providerFailed(underlying: err) }
+    guard let data = payload, !data.isEmpty else { throw ScopedReadError.emptyData }
+    return data
+}
+
 public enum SceneLoader {
     /// Load a scene from data/URL. If format is `.auto`, it detects by file extension or leading char.
     public static func load(_ source: SceneSource, rootKey: String = "Scene") throws -> Scene {
@@ -27,8 +57,12 @@ public enum SceneLoader {
         switch source {
         case .data(let d, let f): data = d; format = f
         case .url(let url):
-            guard let d = try? Data(contentsOf: url) else { throw SceneLoadError.unreadable }
-            data = d
+            do {
+                data = try readSecurityScopedData(from: url)
+            } catch {
+                throw error
+            }
+
             let ext = url.pathExtension.lowercased()
             format = (ext == "json") ? .json : (ext == "xml" ? .xml : .auto)
         }
