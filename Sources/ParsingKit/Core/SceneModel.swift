@@ -194,7 +194,7 @@ public struct VertexData: Decodable {
     }
 }
 
-public struct Scene: Decodable {
+public struct Scene: @unchecked Sendable, Decodable {
     // global
     public var maxRecursionDepth: Int = 6
     public var backgroundColor: Vec3 = .zero
