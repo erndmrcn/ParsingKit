@@ -14,13 +14,13 @@ public struct Ray {
     public var dir: Vec3
     public var invDir: Vec3
     public var sign: SIMD3<Int32>
-    public var tMax: Scalar              // current closest t
+    public var tMax: Scalar
 
     // --- hit payload written by intersectors ---
     public var kind: HitKind = .none
-    public var prim: Int32   = -1        // triangle index or sphere index
-    public var obj:  Int32   = -1        // owning object index (Triangle/Mesh/Sphere)
-    public var mat:  Int32   = -1        // material index
+    public var prim: Int32   = -1
+    public var obj:  Int32   = -1
+    public var mat:  Int32   = -1
     public var normal: Vec3  = .zero
     public var bary: SIMD3<Scalar> = .zero   // (u, v, w) for triangles
 
@@ -40,7 +40,7 @@ public struct Ray {
 }
 
 @inline(__always)
-public func makeRay(origin: Vec3, dir: Vec3, tMax: Scalar = .greatestFiniteMagnitude) -> Ray {
+public func makeRay(origin: Vec3, dir: Vec3, tMax: Scalar = .infinity) -> Ray {
     let inv = 1.0 / dir
     let sgn = SIMD3<Int32>(dir.x < 0 ? 1 : 0,
                            dir.y < 0 ? 1 : 0,
@@ -63,14 +63,12 @@ public func makeShadowRay(from p: Vec3, normal n: Vec3, to light: Vec3) -> (Ray,
                            dir.y < 0 ? 1 : 0,
                            dir.z < 0 ? 1 : 0)
     var r = Ray(origin: origin, dir: dir, invDir: inv, sign: sgn, tMax: dist)
-    // Zero/clear any hit fields if your Ray struct carries them
     r.kind = .none; r.prim = -1; r.obj = -1; r.mat = -1
     return (r, dist)
 }
 
 @inline(__always)
 func offsetPoint(_ p: Vec3, _ n: Vec3) -> Vec3 {
-    // Tweak constant based on your scene scale / Scalar type
     let k: Scalar = 1e-4
     return p + n * k
 }

@@ -81,17 +81,13 @@ public enum SceneLoader {
             }
         }
 
-        // Decode with same model from a synthetic JSON { "Scene": ... } OR direct root
-        // Try { "Scene": ... } first:
         let decoder = JSONDecoder()
         decoder.userInfo[.init(rawValue: "rootKey")!] = rootKey
 
-        // First attempt: { "Scene": ... }
         if let top = try? decoder.decode([String: Scene].self, from: jsonData), let sc = top[rootKey] {
             return sc
         }
 
-        // Second attempt: direct scene body
         do {
             return try decoder.decode(Scene.self, from: jsonData)
         } catch {

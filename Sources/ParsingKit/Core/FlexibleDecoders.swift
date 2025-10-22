@@ -40,7 +40,6 @@ public struct FlexibleInt: Codable {
 }
 
 // MARK: - Vec3 support: accept "x y z", [x,y,z], or a single index that’s resolved later.
-
 public enum FlexibleVec3Value: Equatable {
     public static func == (lhs: FlexibleVec3Value, rhs: FlexibleVec3Value) -> Bool {
         if case let .xyz(l) = lhs, case let .xyz(r) = rhs { return l == r }

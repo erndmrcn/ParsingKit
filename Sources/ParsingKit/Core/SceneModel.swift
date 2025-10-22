@@ -81,7 +81,7 @@ public struct Material: @unchecked Sendable, Decodable {
         case id = "_id", type = "_type"
         case ambient = "AmbientReflectance", diffuse = "DiffuseReflectance", specular = "SpecularReflectance"
         case phong = "PhongExponent", mirror = "MirrorReflectance", ior = "RefractionIndex"
-        case absorption = "AbsorptionCoefficient", absorptionIndex = "AbsorptionIndex"
+        case absorption = "AbsorptionCoefficient"
     }
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -92,13 +92,16 @@ public struct Material: @unchecked Sendable, Decodable {
         specular  = Self.decodeVec3(c, .specular)  ?? specular
         phong     = Scalar((try? c.decode(String.self, forKey: .phong)) ?? "1.0") ?? 1.0
         mirror    = Self.decodeVec3(c, .mirror)    ?? mirror
-        ior       = (try? c.decode(Scalar.self, forKey: .ior)) ?? ior
-        if let ab = Self.decodeVec3(c, .absorption) ?? Self.decodeVec3(c, .absorptionIndex) {
+        ior       = Scalar((try? c.decode(String.self, forKey: .ior)) ?? "0.0") ?? self.ior
+        if let ab = Self.decodeVec3(c, .absorption) {
             absorption = ab
         }
     }
 
     static func decodeVec3(_ c: KeyedDecodingContainer<CodingKeys>, _ k: CodingKeys) -> Vec3? {
+        if k == .absorption {
+            print("")
+        }
         if let s = try? c.decode(String.self, forKey: k) {
             let comps = s.split{ $0 == " " || $0 == "\t" }.compactMap(Scalar.init)
             if comps.count >= 3 { return Vec3(comps[0], comps[1], comps[2]) }
@@ -280,7 +283,6 @@ public struct Scene: @unchecked Sendable, Decodable {
     }
 }
 
-// Utility dynamic key to dig into nested containers with unknown keys.
 public struct DynamicCodingKeys: CodingKey {
     public var stringValue: String
     public var intValue: Int? { nil }
