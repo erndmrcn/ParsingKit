@@ -10,36 +10,55 @@ import simd
 
 public struct Camera: Decodable {
     public var id: String? = nil
+    public var type: String? = nil
+    public var fovy: Scalar? = .zero
     public var position: Vec3 = .zero
     public var gaze: Vec3 = .zero
+    public var gazePoint: Vec3 = .zero
     public var up: Vec3 = .zero
     public var nearPlane: [Scalar] = [-1, 1, -1, 1] // l r b t
-    @FlexibleDouble public var nearDistance: Scalar = 1
+    public var nearDistance: Scalar = 1
     public var imageResolution: (Int, Int) = (512, 512)
     public var numSamples: Int = 1
     public var imageName: String = "image.png"
 
     enum CodingKeys: String, CodingKey {
-        case id = "_id", position = "Position", gaze = "Gaze", up = "Up"
-        case nearPlane = "NearPlane", nearDistance = "NearDistance"
-        case imageResolution = "ImageResolution", numSamples = "NumSamples", imageName = "ImageName"
+        case id = "_id"
+        case type = "_type"
+        case fovy = "FovY"
+        case position = "Position"
+        case gaze = "Gaze"
+        case gazePoint = "GazePoint"
+        case up = "Up"
+        case nearPlane = "NearPlane"
+        case nearDistance = "NearDistance"
+        case imageResolution = "ImageResolution"
+        case numSamples = "NumSamples"
+        case imageName = "ImageName"
     }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         self.id = try? c.decode(String.self, forKey: .id)
+        self.type = try? c.decode(String.self, forKey: .type)
+        self.fovy = Scalar((try? c.decode(String.self, forKey: .fovy)) ?? "0") ?? .zero
         self.position = Self.decodeVec3(c, .position) ?? position
         self.gaze = Self.decodeVec3(c, .gaze) ?? gaze
+        self.gazePoint = Self.decodeVec3(c, .gazePoint) ?? gazePoint
         self.up = Self.decodeVec3(c, .up) ?? up
-
+        print("id is read as: \(id)")
+        print("type is read as: \(type)")
+        print("fovy is read as: \(fovy)")
+        print("position is read as: \(position)")
+        print("gaze is read as: \(gaze)")
+        print("up is read as: \(up)")
         // NearPlane can be "l r b t" or "l r b t dist"
         if let s = try? c.decode(String.self, forKey: .nearPlane) {
             let comps = s.split{ $0 == " " || $0 == "\t" }.compactMap(Scalar.init); if comps.count >= 4 { nearPlane = Array(comps.prefix(4)) }
         } else if let arr = try? c.decode([Scalar].self, forKey: .nearPlane), arr.count >= 4 {
             nearPlane = Array(arr.prefix(4))
         }
-
-        self._nearDistance = (try? c.decode(FlexibleDouble.self, forKey: .nearDistance)) ?? self._nearDistance
+        print("near plane is read as: \(nearPlane)")
 
         // Resolution "w h"
         if let s = try? c.decode(String.self, forKey: .imageResolution) {
@@ -48,8 +67,12 @@ public struct Camera: Decodable {
         } else if let arr = try? c.decode([Int].self, forKey: .imageResolution), arr.count >= 2 {
             imageResolution = (arr[0], arr[1])
         }
+        print("resolution is read as: \(imageResolution)")
 
         self.numSamples = (try? c.decode(Int.self, forKey: .numSamples)) ?? self.numSamples
+        self.nearDistance = Scalar((try? c.decode(String.self, forKey: .nearDistance)) ?? "1") ?? self.nearDistance
+        print("near distance is read as: \(nearDistance)")
+        print("num samples is read as: \(numSamples)")
         self.imageName  = (try? c.decode(String.self, forKey: .imageName)) ?? self.imageName
     }
 
@@ -64,6 +87,33 @@ public struct Camera: Decodable {
     }
 }
 
+extension Camera {
+    func computeBasis(aspect: Scalar) -> (origin: Vec3, u: Vec3, v: Vec3, w: Vec3, fovYRad: Scalar?) {
+        let origin = position
+        let forward = simd_normalize(gaze - position)
+        let right = simd_normalize(simd_cross(forward, up))
+        let trueUp = simd_normalize(simd_cross(right, forward))
+        var fovYRad: Scalar? = nil
+        if fovy != nil {
+            fovYRad = fovy! * .pi / 180.0
+        }
+
+        return (origin, right, trueUp, -forward, fovYRad)
+    }
+
+    func generateRay(x: Scalar, y: Scalar, width: Int, height: Int) -> Ray {
+        let aspect = Scalar(width) / Scalar(height)
+        let (origin, u, v, w, fovYRad) = computeBasis(aspect: aspect)
+        let tanHalfFovY = fovYRad == nil ? 1.0 : tan(fovYRad! / 2)
+        let px = ( (2 * (x + 0.5) / Scalar(width)) - 1 ) * aspect * tanHalfFovY
+        let py = (1 - 2 * (y + 0.5) / Scalar(height)) * tanHalfFovY
+
+        let dir = simd_normalize(px * u + py * v + w)
+        return Ray(origin: origin, dir: dir)
+    }
+}
+
+
 let pi4 = 1.0 //4.0 * .pi
 
 public struct Material: @unchecked Sendable, Decodable {
@@ -77,11 +127,13 @@ public struct Material: @unchecked Sendable, Decodable {
     /// index of refraction
     public var ior:      Scalar = 0
     public var absorption: Vec3 = .zero
+    public var absorptionIndex: Scalar = .zero
     enum CodingKeys: String, CodingKey {
         case id = "_id", type = "_type"
         case ambient = "AmbientReflectance", diffuse = "DiffuseReflectance", specular = "SpecularReflectance"
         case phong = "PhongExponent", mirror = "MirrorReflectance", ior = "RefractionIndex"
         case absorption = "AbsorptionCoefficient"
+        case absorptionIndex = "AbsorptionIndex"
     }
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -93,6 +145,7 @@ public struct Material: @unchecked Sendable, Decodable {
         phong     = Scalar((try? c.decode(String.self, forKey: .phong)) ?? "1.0") ?? 1.0
         mirror    = Self.decodeVec3(c, .mirror)    ?? mirror
         ior       = Scalar((try? c.decode(String.self, forKey: .ior)) ?? "0.0") ?? self.ior
+        absorptionIndex       = Scalar((try? c.decode(String.self, forKey: .absorptionIndex)) ?? "0.0") ?? self.absorptionIndex
         if let ab = Self.decodeVec3(c, .absorption) {
             absorption = ab
         }
@@ -152,6 +205,7 @@ public struct PointLight: Decodable {
         id = try? c.decode(String.self, forKey: .id)
         position = Self.decodeVec3(c, .position) ?? .zero
         intensity = (Self.decodeVec3(c, .intensity) ?? .zero) / pi4
+        print("intensity is what: \(intensity)")
     }
 
     static func decodeVec3(_ c: KeyedDecodingContainer<CodingKeys>, _ k: CodingKeys) -> Vec3? {
@@ -199,6 +253,7 @@ public struct VertexData: Decodable {
 }
 
 public struct Scene: @unchecked Sendable, Decodable {
+    public var path: URL?
     // global
     public var maxRecursionDepth: Int = 6
     public var backgroundColor: Vec3 = .zero

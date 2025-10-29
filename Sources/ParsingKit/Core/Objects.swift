@@ -85,23 +85,27 @@ public final class Triangle: SceneObject {
 }
 
 public struct Face: Decodable {
+    public var plyPath: String?
     public var data: [Int] = []
-    public var type: String = ""
+    public var type: String?
 
     enum CodingKeys: String, CodingKey {
         case data = "_data"
         case type = "_type"
+        case plyPath = "_plyFile"
     }
 
     public init() {
+        plyPath = nil
         data = []
-        type = ""
+        type = nil
     }
 
     public init(from decoder: any Decoder) throws {
         let root = try decoder.container(keyedBy: CodingKeys.self)
 
-        type = try root.decode(String.self, forKey: .type) ?? type
+        type = try? root.decode(String.self, forKey: .type) ?? type
+        plyPath = try? root.decode(String.self, forKey: .plyPath)
 
         if let arr2D = try? root.decode([Int].self, forKey: .data) {
             data = arr2D
@@ -115,13 +119,21 @@ public struct Face: Decodable {
 // Mesh (faces as flattened triplets)
 public final class Mesh: SceneObject {
     public var faces: Face  = .init() // [[i,j,k]] 1-based
+    public var shadingMode: String = "flat"
     public var triangles: [Triangle] = []
-    enum CodingKeys: String, CodingKey { case id = "_id"; case material = "Material"; case faces = "Faces" }
+
+    enum CodingKeys: String, CodingKey {
+        case id = "_id"
+        case material = "Material"
+        case faces = "Faces"
+        case shadingMode = "_shadingMode"
+    }
 
     public required init(from decoder: any Decoder) throws {
         super.init()
         let c = try decoder.container(keyedBy: CodingKeys.self)
         self.id       = (try? c.decode(String.self, forKey: .id)) ?? self.id
+        self.shadingMode = (try? c.decode(String.self, forKey: .shadingMode)) ?? self.shadingMode
         self.material = (try? c.decode(String.self, forKey: .material)) ?? ""
         self.faces = try c.decode(Face.self, forKey: .faces)
 
