@@ -13,3 +13,5 @@ public typealias Scalar = Float
 public typealias Scalar = Double
 #endif
 
+extension Scalar: Decodable { }
+
