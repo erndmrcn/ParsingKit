@@ -24,9 +24,9 @@ extension Transformations {
 extension Transformations: Decodable {
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.translations = (try? container.decode([Translation].self, forKey: .translations)) ?? []
-        self.rotations = (try? container.decode([Rotation].self, forKey: .rotations)) ?? []
-        self.scalings = (try? container.decode([Scale].self, forKey: .scalings)) ?? []
+        self.translations = (try? container.decode([Translation].self, forKey: .translations)) ?? [(try? container.decode(Translation.self, forKey: .translations)) ?? .init()]
+        self.rotations = (try? container.decode([Rotation].self, forKey: .rotations)) ?? [(try? container.decode(Rotation.self, forKey: .rotations)) ?? .init()]
+        self.scalings = (try? container.decode([Scale].self, forKey: .scalings)) ?? [(try? container.decode(Scale.self, forKey: .scalings)) ?? .init()]
     }
 }
 

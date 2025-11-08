@@ -11,7 +11,8 @@ public final class Mesh: SceneObject {
     public var faces: Face  = .init() // [[i,j,k]] 1-based
     public var shadingMode: String = "flat"
     public var triangles: [Triangle] = []
-    public var transformations: [String] = []
+    public var transformTokens: String?
+    public var resetTransform: Bool = false
     public var transformationMatrix: Mat4 = .identity
 
     public required init(from decoder: any Decoder) throws {
@@ -20,13 +21,9 @@ public final class Mesh: SceneObject {
         self.id       = (try? c.decode(String.self, forKey: .id)) ?? self.id
         self.shadingMode = (try? c.decode(String.self, forKey: .shadingMode)) ?? self.shadingMode
         self.material = (try? c.decode(String.self, forKey: .material)) ?? ""
+        self.transformTokens = (try? c.decode(String.self, forKey: .transformations)) ?? ""
+        self.resetTransform = ((try? c.decode(String.self, forKey: .resetTransform)) ?? "false") == "true" ? true : false
         self.faces = try c.decode(Face.self, forKey: .faces)
-
-        if let transforms = try? c.decode(String.self, forKey: .transformations) {
-            for transform in transforms.split(separator: " ") {
-                transformations.append(String(transform))
-            }
-        }
     }
     
     public required init() {
@@ -41,6 +38,7 @@ extension Mesh {
         case material = "Material"
         case faces = "Faces"
         case shadingMode = "_shadingMode"
+        case resetTransform = "_resetTransform"
         case transformations = "Transformations"
     }
 }

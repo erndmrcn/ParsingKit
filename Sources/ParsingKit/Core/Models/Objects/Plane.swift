@@ -9,6 +9,8 @@ public final class Plane: SceneObject {
     public var centerIdx: Int = 1
     public var center: Vec3 = .zero
     public var normal: Vec3 = .zero
+    public var resetTransform: Bool = false
+    public var transformTokens: String?
 
     public required init(from decoder: Decoder) throws {
         super.init()
@@ -17,6 +19,8 @@ public final class Plane: SceneObject {
         self.material = (try? c.decode(String.self, forKey: .material)) ?? ""
         self.centerIdx  = Int((try? c.decode(String.self, forKey: .centerIdx)) ?? "1") ?? 1
         self.normal  = Self.decodeVec3(c, .normal) ?? .zero
+        self.transformTokens = (try? c.decode(String.self, forKey: .transformTokens)) ?? ""
+        self.resetTransform = ((try? c.decode(String.self, forKey: .resetTransform)) ?? "false") == "true" ? true : false
     }
 
     public required init() {
@@ -31,6 +35,8 @@ extension Plane {
         case material = "Material"
         case centerIdx = "Point"
         case normal = "Normal"
+        case resetTransform = "_resetTransform"
+        case transformTokens = "Transformations"
     }
 }
 

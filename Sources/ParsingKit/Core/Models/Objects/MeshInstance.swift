@@ -8,7 +8,7 @@
 // MARK: - MeshInstance object type
 public class MeshInstance: SceneObject, Sendable {
     public var baseMeshID: String = ""
-    public var resetTransform: Bool = true
+    public var resetTransform: Bool = false
     public var transformTokens: String?
 
     public required init(from decoder: any Decoder) throws {
@@ -18,7 +18,7 @@ public class MeshInstance: SceneObject, Sendable {
         self.baseMeshID = (try? c.decode(String.self, forKey: .baseMeshID)) ?? self.baseMeshID
         self.material = (try? c.decode(String.self, forKey: .material)) ?? ""
         self.transformTokens = (try? c.decode(String.self, forKey: .transformTokens)) ?? ""
-        self.resetTransform = try c.decode(Bool.self, forKey: .resetTransform)
+        self.resetTransform = ((try? c.decode(String.self, forKey: .resetTransform)) ?? "false") == "true" ? true : false
     }
 
     public required init() {

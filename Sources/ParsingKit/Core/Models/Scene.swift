@@ -101,14 +101,71 @@ extension Scene: Decodable {
             decodeList("Plane", Plane.self)
             decodeList("MeshInstance", MeshInstance.self)
         }
+
+        for (i, camera) in self.cameras.enumerated() {
+            print("Eren Test: Frame \(FileManager.default.displayName(atPath: path?.path ?? "?")) Cam\(i) before M:\(camera.position)")
+            let M = composeTransform(tokens: camera.transformTokens, reset: true)
+            print("Eren Test: Cam\(i) after M:\(transformPoint(M, camera.position))")
+
+            // 1. Extract scale factors from the transformation matrix
+            let scaleX = length(Vec3(M[0][0], M[1][0], M[2][0]))
+            let scaleY = length(Vec3(M[0][1], M[1][1], M[2][1]))
+            let scaleZ = length(Vec3(M[0][2], M[1][2], M[2][2]))
+            let avgScale = (scaleX + scaleY + scaleZ) / 3.0  // Uniform zoom factor
+
+            // 2. Extract rotation-only matrix (normalize basis vectors)
+            let M_rot = Mat4(
+                Vec4(M[0][0]/scaleX, M[0][1]/scaleY, M[0][2]/scaleZ, 0),
+                Vec4(M[1][0]/scaleX, M[1][1]/scaleY, M[1][2]/scaleZ, 0),
+                Vec4(M[2][0]/scaleX, M[2][1]/scaleY, M[2][2]/scaleZ, 0),
+                Vec4(0, 0, 0, 1)
+            )
+
+            // 3. Transform camera position (affected by translation + rotation + scale)
+            cameras[i].position = transformPoint(M, camera.position)
+
+            // 4. Transform camera orientation vectors (rotation only, no scale/translation)
+            cameras[i].gaze = normalize(transformVector(M_rot, camera.gaze))
+            cameras[i].up = normalize(transformVector(M_rot, camera.up))
+
+            // 5. Transform gaze point if using lookAt mode
+            if camera.type?.lowercased() == "lookat" {
+                cameras[i].gazePoint = transformPoint(M, camera.gazePoint)
+            }
+
+            // 6. Apply scale as zoom
+            if camera.type?.lowercased() == "lookat" {
+                if let fovy = camera.fovy {
+                    // Scale down FOV = zoom in
+                    cameras[i].fovy = fovy / avgScale
+                }
+            } else {
+                // For explicit near plane, scale down dimensions = zoom in
+                print("ScaleX = \(scaleX)")
+                print("ScaleY = \(scaleY)")
+                print("ScaleZ = \(scaleZ)")
+                print("avgScale = \(avgScale)")
+//                cameras[i].nearPlane[0] = camera.nearPlane[0] / scaleY  // left
+//                cameras[i].nearPlane[1] = camera.nearPlane[1] / scaleY   //right
+//                cameras[i].nearPlane[2] = camera.nearPlane[2] / scaleX  // bottom
+//                cameras[i].nearPlane[3] = camera.nearPlane[3] / scaleX  // top
+                cameras[i].nearDistance = camera.nearDistance * max(max(scaleX, scaleY), scaleZ)
+            }
+
+            // Near distance should be scaled (affects depth of frustum)
+//            cameras[i].nearDistance = camera.nearDistance / scaleY
+
+            cameras[i].transformationMatrix = M
+        }
     }
 }
 
 // MARK: - Transform Composition
 extension Scene {
-    public func composeTransform(tokens: String?) -> Mat4 {
-        guard let tokens, !tokens.isEmpty else { return matrix_identity_double4x4 }
-        var M = matrix_identity_double4x4
+    public func composeTransform(tokens: String?, reset: Bool, base: Mat4 = matrix_identity_double4x4) -> Mat4 {
+        guard let tokens, !tokens.isEmpty else { return base }
+
+        var M = reset ? matrix_identity_double4x4 : base
 
         for tok in tokens.split(separator: " ") {
             if tok.hasPrefix("t") {
@@ -116,7 +173,8 @@ extension Scene {
                 if let t = transformations.translations.first(where: { $0.id == key }) {
                     let xyz = t.data.split(separator: " ").compactMap { Double($0) }
                     if xyz.count == 3 {
-                        M = Mat4(translation: Vec3(xyz[0], xyz[1], xyz[2])) * M
+                        let T = Mat4(translation: Vec3(xyz[0], xyz[1], xyz[2]))
+                        M = T * M
                     }
                 }
             } else if tok.hasPrefix("r") {
@@ -124,7 +182,8 @@ extension Scene {
                 if let r = transformations.rotations.first(where: { $0.id == key }) {
                     let vals = r.data.split(separator: " ").compactMap { Double($0) }
                     if vals.count == 4 {
-                        M = Mat4(rotation: vals[0], axis: Vec3(vals[1], vals[2], vals[3])) * M
+                        let R = Mat4(rotation: vals[0], axis: Vec3(vals[1], vals[2], vals[3]))
+                        M = R * M
                     }
                 }
             } else if tok.hasPrefix("s") {
@@ -132,11 +191,24 @@ extension Scene {
                 if let s = transformations.scalings.first(where: { $0.id == key }) {
                     let xyz = s.data.split(separator: " ").compactMap { Double($0) }
                     if xyz.count == 3 {
-                        M = Mat4(scaling: Vec3(xyz[0], xyz[1], xyz[2])) * M
+                        let S = Mat4(scaling: Vec3(xyz[0], xyz[1], xyz[2]))
+                        M = S * M
                     }
                 }
             }
         }
         return M
     }
+}
+
+@inlinable @inline(__always)
+public func transformPoint(_ M: Mat4, _ p: Vec3) -> Vec3 {
+    let v = M * Vec4(p, 1.0)
+    return Vec3(v.x, v.y, v.z)
+}
+
+@inlinable @inline(__always)
+public func transformVector(_ M: Mat4, _ v: Vec3) -> Vec3 {
+    let r = M * Vec4(v, 0.0)
+    return Vec3(r.x, r.y, r.z)
 }

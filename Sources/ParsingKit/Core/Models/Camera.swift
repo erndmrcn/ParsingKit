@@ -21,6 +21,8 @@ public struct Camera {
     public var imageResolution: (Int, Int) = (512, 512)
     public var numSamples: Int = 1
     public var imageName: String = "image.png"
+    public var transformTokens: String?
+    public var transformationMatrix: Mat4 = .identity
 }
 
 // MARK: - Coding Keys
@@ -38,6 +40,7 @@ extension Camera {
         case imageResolution = "ImageResolution"
         case numSamples = "NumSamples"
         case imageName = "ImageName"
+        case transformations = "Transformations"
     }
 }
 
@@ -52,6 +55,7 @@ extension Camera: Decodable {
         self.gaze = Self.decodeVec3(c, .gaze) ?? gaze
         self.gazePoint = Self.decodeVec3(c, .gazePoint) ?? gazePoint
         self.up = Self.decodeVec3(c, .up) ?? up
+        self.transformTokens = (try? c.decode(String.self, forKey: .transformations)) ?? ""
         if let s = try? c.decode(String.self, forKey: .nearPlane) {
             let comps = s.split{ $0 == " " || $0 == "\t" }.compactMap(Scalar.init); if comps.count >= 4 { nearPlane = Array(comps.prefix(4)) }
         } else if let arr = try? c.decode([Scalar].self, forKey: .nearPlane), arr.count >= 4 {

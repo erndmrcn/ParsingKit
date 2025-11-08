@@ -16,7 +16,9 @@ public final class Triangle: SceneObject {
     public var e1: Vec3 = .zero           // v1 - v0
     public var e2: Vec3 = .zero           // v2 - v0
     public var centroid: Vec3 = .zero
-    
+    public var resetTransform: Bool = false
+    public var transformTokens: String?
+
     public required init(from decoder: Decoder) throws {
         super.init()
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -29,6 +31,9 @@ public final class Triangle: SceneObject {
             let comps = s.split{ $0 == " " || $0 == "\t" }.compactMap{ Int($0) }
             if comps.count >= 3 { indices = Array(comps.prefix(3)) }
         }
+
+        self.transformTokens = (try? c.decode(String.self, forKey: .transformTokens)) ?? ""
+        self.resetTransform = ((try? c.decode(String.self, forKey: .resetTransform)) ?? "false") == "true" ? true : false
     }
 
     public required init() {
@@ -56,5 +61,7 @@ extension Triangle {
         case id = "_id"
         case material = "Material"
         case indices = "Indices"
+        case resetTransform = "_resetTransform"
+        case transformTokens = "Transformations"
     }
 }
