@@ -103,17 +103,13 @@ extension Scene: Decodable {
         }
 
         for (i, camera) in self.cameras.enumerated() {
-            print("Eren Test: Frame \(FileManager.default.displayName(atPath: path?.path ?? "?")) Cam\(i) before M:\(camera.position)")
             let M = composeTransform(tokens: camera.transformTokens, reset: true)
-            print("Eren Test: Cam\(i) after M:\(transformPoint(M, camera.position))")
 
-            // 1. Extract scale factors from the transformation matrix
             let scaleX = length(Vec3(M[0][0], M[1][0], M[2][0]))
             let scaleY = length(Vec3(M[0][1], M[1][1], M[2][1]))
             let scaleZ = length(Vec3(M[0][2], M[1][2], M[2][2]))
-            let avgScale = (scaleX + scaleY + scaleZ) / 3.0  // Uniform zoom factor
+            let avgScale = (scaleX + scaleY + scaleZ) / 3.0
 
-            // 2. Extract rotation-only matrix (normalize basis vectors)
             let M_rot = Mat4(
                 Vec4(M[0][0]/scaleX, M[0][1]/scaleY, M[0][2]/scaleZ, 0),
                 Vec4(M[1][0]/scaleX, M[1][1]/scaleY, M[1][2]/scaleZ, 0),
@@ -121,39 +117,22 @@ extension Scene: Decodable {
                 Vec4(0, 0, 0, 1)
             )
 
-            // 3. Transform camera position (affected by translation + rotation + scale)
             cameras[i].position = transformPoint(M, camera.position)
 
-            // 4. Transform camera orientation vectors (rotation only, no scale/translation)
             cameras[i].gaze = normalize(transformVector(M_rot, camera.gaze))
             cameras[i].up = normalize(transformVector(M_rot, camera.up))
 
-            // 5. Transform gaze point if using lookAt mode
             if camera.type?.lowercased() == "lookat" {
                 cameras[i].gazePoint = transformPoint(M, camera.gazePoint)
             }
 
-            // 6. Apply scale as zoom
             if camera.type?.lowercased() == "lookat" {
                 if let fovy = camera.fovy {
-                    // Scale down FOV = zoom in
                     cameras[i].fovy = fovy / avgScale
                 }
             } else {
-                // For explicit near plane, scale down dimensions = zoom in
-                print("ScaleX = \(scaleX)")
-                print("ScaleY = \(scaleY)")
-                print("ScaleZ = \(scaleZ)")
-                print("avgScale = \(avgScale)")
-//                cameras[i].nearPlane[0] = camera.nearPlane[0] / scaleY  // left
-//                cameras[i].nearPlane[1] = camera.nearPlane[1] / scaleY   //right
-//                cameras[i].nearPlane[2] = camera.nearPlane[2] / scaleX  // bottom
-//                cameras[i].nearPlane[3] = camera.nearPlane[3] / scaleX  // top
                 cameras[i].nearDistance = camera.nearDistance * max(max(scaleX, scaleY), scaleZ)
             }
-
-            // Near distance should be scaled (affects depth of frustum)
-//            cameras[i].nearDistance = camera.nearDistance / scaleY
 
             cameras[i].transformationMatrix = M
         }

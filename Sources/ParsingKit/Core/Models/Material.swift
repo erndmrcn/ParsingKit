@@ -49,9 +49,6 @@ extension Material: Decodable {
     }
 
     static func decodeVec3(_ c: KeyedDecodingContainer<CodingKeys>, _ k: CodingKeys) -> Vec3? {
-        if k == .absorption {
-            print("")
-        }
         if let s = try? c.decode(String.self, forKey: k) {
             let comps = s.split{ $0 == " " || $0 == "\t" }.compactMap(Scalar.init)
             if comps.count >= 3 { return Vec3(comps[0], comps[1], comps[2]) }
