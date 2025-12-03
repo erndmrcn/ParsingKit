@@ -41,8 +41,10 @@ public struct Ray {
     public var sign: SIMD3<Int>
     public var tMax: Scalar
     public var hit: Hit = .init()   // ✅ Unified hit record
+    public var time: Scalar = 0
+    public var tMin = Scalar(0)
 
-    public init(origin: Vec3, dir: Vec3, tMax: Scalar = .infinity) {
+    public init(origin: Vec3, dir: Vec3, tMax: Scalar = .infinity, time: Scalar = 0) {
         self.origin = origin
         self.dir = normalize(dir)
         self.invDir = 1.0 / dir
@@ -50,6 +52,7 @@ public struct Ray {
                           dir.y < 0 ? 1 : 0,
                           dir.z < 0 ? 1 : 0)
         self.tMax = tMax
+        self.time = time
     }
 }
 

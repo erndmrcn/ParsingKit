@@ -18,6 +18,7 @@ public final class Triangle: SceneObject {
     public var centroid: Vec3 = .zero
     public var resetTransform: Bool = false
     public var transformTokens: String?
+    public var motionBlur: Vec3 = .zero
 
     public required init(from decoder: Decoder) throws {
         super.init()

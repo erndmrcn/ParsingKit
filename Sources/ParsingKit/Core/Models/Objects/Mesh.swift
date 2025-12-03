@@ -14,6 +14,7 @@ public final class Mesh: SceneObject {
     public var transformTokens: String?
     public var resetTransform: Bool = false
     public var transformationMatrix: Mat4 = .identity
+    public var motionBlur: Vec3 = .zero
 
     public required init(from decoder: any Decoder) throws {
         super.init()
@@ -24,8 +25,19 @@ public final class Mesh: SceneObject {
         self.transformTokens = (try? c.decode(String.self, forKey: .transformations)) ?? ""
         self.resetTransform = ((try? c.decode(String.self, forKey: .resetTransform)) ?? "false") == "true" ? true : false
         self.faces = try c.decode(Face.self, forKey: .faces)
+        self.motionBlur = Self.decodeVec3(c, .motionBlur) ?? .zero
     }
-    
+
+    static func decodeVec3(_ c: KeyedDecodingContainer<CodingKeys>, _ k: CodingKeys) -> Vec3? {
+        if let s = try? c.decode(String.self, forKey: k) {
+            let comps = s.split{ $0 == " " || $0 == "\t" }.compactMap(Scalar.init)
+            if comps.count >= 3 { return Vec3(comps[0], comps[1], comps[2]) }
+        } else if let arr = try? c.decode([Scalar].self, forKey: k), arr.count >= 3 {
+            return Vec3(arr[0], arr[1], arr[2])
+        }
+        return nil
+    }
+
     public required init() {
         super.init()
     }
@@ -40,5 +52,6 @@ extension Mesh {
         case shadingMode = "_shadingMode"
         case resetTransform = "_resetTransform"
         case transformations = "Transformations"
+        case motionBlur = "MotionBlur"
     }
 }

@@ -17,6 +17,9 @@ public struct Material: @unchecked Sendable {
     public var ior:      Scalar = 0
     public var absorption: Vec3 = .zero
     public var absorptionIndex: Scalar = .zero
+    public var roughness: Scalar = 0
+    public var radiance: Vec3 = .zero
+    public var isEmissive: Bool { !(radiance == .zero) }
 }
 
 // MARK: - Coding Keys
@@ -27,6 +30,7 @@ extension Material {
         case phong = "PhongExponent", mirror = "MirrorReflectance", ior = "RefractionIndex"
         case absorption = "AbsorptionCoefficient"
         case absorptionIndex = "AbsorptionIndex"
+        case roughness = "Roughness"
     }
 }
 
@@ -40,6 +44,7 @@ extension Material: Decodable {
         diffuse   = Self.decodeVec3(c, .diffuse)   ?? diffuse
         specular  = Self.decodeVec3(c, .specular)  ?? specular
         phong     = Scalar((try? c.decode(String.self, forKey: .phong)) ?? "1.0") ?? 1.0
+        roughness     = Scalar((try? c.decode(String.self, forKey: .roughness)) ?? "0.0") ?? self.roughness
         mirror    = Self.decodeVec3(c, .mirror)    ?? mirror
         ior       = Scalar((try? c.decode(String.self, forKey: .ior)) ?? "0.0") ?? self.ior
         absorptionIndex       = Scalar((try? c.decode(String.self, forKey: .absorptionIndex)) ?? "0.0") ?? self.absorptionIndex

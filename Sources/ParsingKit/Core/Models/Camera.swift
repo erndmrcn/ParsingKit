@@ -23,6 +23,8 @@ public struct Camera {
     public var imageName: String = "image.png"
     public var transformTokens: String?
     public var transformationMatrix: Mat4 = .identity
+    public var focusDistance: Scalar = .zero
+    public var apertureSize: Scalar = .zero
 }
 
 // MARK: - Coding Keys
@@ -41,6 +43,8 @@ extension Camera {
         case numSamples = "NumSamples"
         case imageName = "ImageName"
         case transformations = "Transformations"
+        case focusDistance = "FocusDistance"
+        case apertureSize = "ApertureSize"
     }
 }
 
@@ -51,6 +55,8 @@ extension Camera: Decodable {
         self.id = try? c.decode(String.self, forKey: .id)
         self.type = try? c.decode(String.self, forKey: .type)
         self.fovy = Scalar((try? c.decode(String.self, forKey: .fovy)) ?? "0") ?? .zero
+        self.apertureSize = Scalar((try? c.decode(String.self, forKey: .apertureSize)) ?? "0") ?? .zero
+        self.focusDistance = Scalar((try? c.decode(String.self, forKey: .focusDistance)) ?? "0") ?? .zero
         self.position = Self.decodeVec3(c, .position) ?? position
         self.gaze = Self.decodeVec3(c, .gaze) ?? gaze
         self.gazePoint = Self.decodeVec3(c, .gazePoint) ?? gazePoint
@@ -69,7 +75,7 @@ extension Camera: Decodable {
             imageResolution = (arr[0], arr[1])
         }
 
-        self.numSamples = (try? c.decode(Int.self, forKey: .numSamples)) ?? self.numSamples
+        self.numSamples = Int((try? c.decode(String.self, forKey: .numSamples)) ?? "1") ?? numSamples
         self.nearDistance = Scalar((try? c.decode(String.self, forKey: .nearDistance)) ?? "1") ?? self.nearDistance
         self.imageName  = (try? c.decode(String.self, forKey: .imageName)) ?? self.imageName
     }
