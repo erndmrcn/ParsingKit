@@ -21,7 +21,9 @@ public struct Scene: @unchecked Sendable {
     public var lights: Lights = Lights(ambient: Vec3.zero, points: [])
     public var materials: [Material] = []
     public var vertexData: VertexData
+    public var texCoorData: TexCoordData
     public var transformations: Transformations
+    public var textures: Texture?
 
     // objects
     public var objects: [SceneObject] = []              // Sphere, Triangle, Mesh, Plane, MeshInstance
@@ -38,8 +40,10 @@ extension Scene {
         case lights = "Lights"
         case materials = "Materials"
         case vertexData = "VertexData"
+        case texCoordData = "TexCoordData"
         case objects = "Objects"
         case transformations = "Transformations"
+        case texture = "Textures"
     }
 }
 
@@ -70,7 +74,8 @@ extension Scene: Decodable {
 
         // Lights
         lights = (try? root.decode(Lights.self, forKey: .lights)) ?? lights
-
+        textures = (try? root.decode(Texture.self, forKey: .texture))
+        print("Textures are \(textures)")
         // Materials
         if let matsContainer = try? root.nestedContainer(keyedBy: DynamicCodingKeys.self, forKey: .materials) {
             if let mats = try? matsContainer.decode([Material].self, forKey: .init("Material")) {
@@ -82,6 +87,8 @@ extension Scene: Decodable {
 
         // VertexData & Transformations
         vertexData = try root.decode(VertexData.self, forKey: .vertexData)
+        texCoorData = (try? root.decode(TexCoordData.self, forKey: .texCoordData)) ?? .init()
+        print("texCoorData: \(texCoorData)")
         transformations = try root.decodeIfPresent(Transformations.self, forKey: .transformations) ?? .init()
 
         // Objects (Sphere, Triangle, Mesh, Plane, MeshInstance)
@@ -103,7 +110,7 @@ extension Scene: Decodable {
         }
 
         for (i, camera) in self.cameras.enumerated() {
-            let M = composeTransform(tokens: camera.transformTokens, reset: true)
+            let M = composeTransform(tokens: camera.transformTokens, reset: true, base: .identity)
 
             let scaleX = length(Vec3(M[0][0], M[1][0], M[2][0]))
             let scaleY = length(Vec3(M[0][1], M[1][1], M[2][1]))
@@ -141,16 +148,16 @@ extension Scene: Decodable {
 
 // MARK: - Transform Composition
 extension Scene {
-    public func composeTransform(tokens: String?, reset: Bool, base: Mat4 = matrix_identity_double4x4) -> Mat4 {
+    public func composeTransform(tokens: String?, reset: Bool, base: Mat4) -> Mat4 {
         guard let tokens, !tokens.isEmpty else { return base }
 
-        var M = reset ? matrix_identity_double4x4 : base
+        var M = reset ? .identity : base
 
         for tok in tokens.split(separator: " ") {
             if tok.hasPrefix("t") {
                 let key = String(tok.dropFirst())
                 if let t = transformations.translations.first(where: { $0.id == key }) {
-                    let xyz = t.data.split(separator: " ").compactMap { Double($0) }
+                    let xyz = t.data.split(separator: " ").compactMap { Scalar($0) }
                     if xyz.count == 3 {
                         let T = Mat4(translation: Vec3(xyz[0], xyz[1], xyz[2]))
                         M = T * M
@@ -159,7 +166,7 @@ extension Scene {
             } else if tok.hasPrefix("r") {
                 let key = String(tok.dropFirst())
                 if let r = transformations.rotations.first(where: { $0.id == key }) {
-                    let vals = r.data.split(separator: " ").compactMap { Double($0) }
+                    let vals = r.data.split(separator: " ").compactMap { Scalar($0) }
                     if vals.count == 4 {
                         let R = Mat4(rotation: vals[0], axis: Vec3(vals[1], vals[2], vals[3]))
                         M = R * M
@@ -168,7 +175,7 @@ extension Scene {
             } else if tok.hasPrefix("s") {
                 let key = String(tok.dropFirst())
                 if let s = transformations.scalings.first(where: { $0.id == key }) {
-                    let xyz = s.data.split(separator: " ").compactMap { Double($0) }
+                    let xyz = s.data.split(separator: " ").compactMap { Scalar($0) }
                     if xyz.count == 3 {
                         let S = Mat4(scaling: Vec3(xyz[0], xyz[1], xyz[2]))
                         M = S * M

@@ -15,10 +15,15 @@ public final class Triangle: SceneObject {
     public var n2: Vec3 = .zero
     public var e1: Vec3 = .zero           // v1 - v0
     public var e2: Vec3 = .zero           // v2 - v0
+    public var uv0: Vec2 = .zero
+    public var uv1: Vec2 = .zero
+    public var uv2: Vec2 = .zero
+    public var ltw: Mat4 = .identity
     public var centroid: Vec3 = .zero
     public var resetTransform: Bool = false
     public var transformTokens: String?
     public var motionBlur: Vec3 = .zero
+    public var textures: String = ""
 
     public required init(from decoder: Decoder) throws {
         super.init()

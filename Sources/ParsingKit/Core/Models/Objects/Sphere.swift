@@ -11,6 +11,8 @@ public final class Sphere: SceneObject {
     public var radius: Scalar = 1
     public var resetTransform: Bool = false
     public var transformTokens: String?
+    public var textures: String = ""
+    public var ltw: Mat4 = .identity
 
     public required init(from decoder: Decoder) throws {
         super.init()
@@ -20,6 +22,7 @@ public final class Sphere: SceneObject {
         self.centerIdx  = Int((try? c.decode(String.self, forKey: .centerIdx)) ?? "1") ?? 1
         self.radius  = Scalar((try? c.decode(String.self, forKey: .radius)) ?? "1") ?? 1
         self.transformTokens = (try? c.decode(String.self, forKey: .transformTokens)) ?? ""
+        self.textures = (try? c.decode(String.self, forKey: .textures)) ?? ""
         self.resetTransform = ((try? c.decode(String.self, forKey: .resetTransform)) ?? "false") == "true" ? true : false
     }
 
@@ -37,5 +40,6 @@ extension Sphere {
         case radius = "Radius"
         case resetTransform = "_resetTransform"
         case transformTokens = "Transformations"
+        case textures = "Textures"
     }
 }

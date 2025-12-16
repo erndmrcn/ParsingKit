@@ -46,7 +46,7 @@ extension Lights: Decodable {
 }
 
 // MARK: - Point Light
-public struct PointLight: Light {
+public struct PointLight: @unchecked Sendable, Light {
     public var id: String? = nil
     public var position: Vec3 = .zero
     public var intensity: Vec3 = .zero
@@ -62,12 +62,12 @@ extension PointLight {
 }
 
 // MARK: - Decodable
-extension PointLight: Decodable {
+extension PointLight: @unchecked Sendable, Decodable {
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = try? c.decode(String.self, forKey: .id)
         position = Self.decodeVec3(c, .position) ?? .zero
-        intensity = (Self.decodeVec3(c, .intensity) ?? .zero) / Constants.pi4
+        intensity = (Self.decodeVec3(c, .intensity) ?? .zero)
     }
 
     static func decodeVec3(_ c: KeyedDecodingContainer<CodingKeys>, _ k: CodingKeys) -> Vec3? {
@@ -82,7 +82,7 @@ extension PointLight: Decodable {
 }
 
 // MARK: - Area Light
-public struct AreaLight: Light {
+public struct AreaLight: @unchecked Sendable, Light {
     public var id: String? = nil
     public var position: Vec3 = .zero
     public var normal: Vec3 = .zero

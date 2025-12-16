@@ -22,7 +22,7 @@ extension Mat4 {
         self.init(diagonal: Vec4(s, 1.0))
     }
 
-    init(rotation angleDeg: Double, axis: Vec3) {
+    init(rotation angleDeg: Scalar, axis: Vec3) {
         let n = normalize(axis)
         let a = n.x, b = n.y, c = n.z
 
@@ -31,7 +31,7 @@ extension Mat4 {
 
         let cosA = cos(rad)
         let sinA = sin(rad)
-        let K = 1.0 - cosA
+        let K: Scalar = 1.0 - cosA
 
         let r00 = cosA + a*a*K
         let r01 = a*b*K - c*sinA

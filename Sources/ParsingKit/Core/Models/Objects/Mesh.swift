@@ -11,6 +11,7 @@ public final class Mesh: SceneObject {
     public var faces: Face  = .init() // [[i,j,k]] 1-based
     public var shadingMode: String = "flat"
     public var triangles: [Triangle] = []
+    public var textures: String = ""
     public var transformTokens: String?
     public var resetTransform: Bool = false
     public var transformationMatrix: Mat4 = .identity
@@ -22,6 +23,7 @@ public final class Mesh: SceneObject {
         self.id       = (try? c.decode(String.self, forKey: .id)) ?? self.id
         self.shadingMode = (try? c.decode(String.self, forKey: .shadingMode)) ?? self.shadingMode
         self.material = (try? c.decode(String.self, forKey: .material)) ?? ""
+        self.textures = (try? c.decode(String.self, forKey: .textures)) ?? ""
         self.transformTokens = (try? c.decode(String.self, forKey: .transformations)) ?? ""
         self.resetTransform = ((try? c.decode(String.self, forKey: .resetTransform)) ?? "false") == "true" ? true : false
         self.faces = try c.decode(Face.self, forKey: .faces)
@@ -53,5 +55,6 @@ extension Mesh {
         case resetTransform = "_resetTransform"
         case transformations = "Transformations"
         case motionBlur = "MotionBlur"
+        case textures = "Textures"
     }
 }

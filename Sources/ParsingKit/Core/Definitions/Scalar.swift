@@ -7,7 +7,7 @@
 
 import simd
 
-#if PARSINGKIT_SCALAR_FLOAT
+#if SCALAR_IS_FLOAT
 public typealias Scalar = Float
 #else
 public typealias Scalar = Double
