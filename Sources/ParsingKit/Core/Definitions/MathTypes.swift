@@ -52,3 +52,27 @@ public func normalTransformMatrix(from M: Mat4) -> Mat3 {
     )
     return m3.inverse.transpose
 }
+
+extension Mat4 {
+
+    init(fromString s: String) throws {
+        let values: [Scalar] = s
+            .split(separator: " ")
+            .compactMap { Scalar($0) }
+
+        guard values.count == 16 else {
+            throw DecodingError.dataCorrupted(
+                .init(
+                    codingPath: [],
+                    debugDescription: "Mat4 requires 16 values, got \(values.count)"
+                )
+            )
+        }
+        self.init(
+            Vec4(values[0],  values[4],  values[8],  values[12]),
+            Vec4(values[1],  values[5],  values[9],  values[13]),
+            Vec4(values[2],  values[6],  values[10], values[14]),
+            Vec4(values[3],  values[7],  values[11], values[15])
+        )
+    }
+}

@@ -23,7 +23,6 @@ extension VertexData: Decodable {
     public init(from decoder: any Decoder) throws {
         let root = try decoder.container(keyedBy: CodingKeys.self)
         type = try root.decode(String.self, forKey: .type) ?? type
-
         if let vStr = try? root.decode(String.self, forKey: .data) {
             let lines = vStr.split(whereSeparator: \.isWhitespace).compactMap(Scalar.init).chunked(into: 3)
             data = lines.compactMap { line in

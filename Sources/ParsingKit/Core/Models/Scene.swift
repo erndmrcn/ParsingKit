@@ -75,7 +75,6 @@ extension Scene: Decodable {
         // Lights
         lights = (try? root.decode(Lights.self, forKey: .lights)) ?? lights
         textures = (try? root.decode(Texture.self, forKey: .texture))
-        print("Textures are \(textures)")
         // Materials
         if let matsContainer = try? root.nestedContainer(keyedBy: DynamicCodingKeys.self, forKey: .materials) {
             if let mats = try? matsContainer.decode([Material].self, forKey: .init("Material")) {
@@ -86,11 +85,9 @@ extension Scene: Decodable {
         }
 
         // VertexData & Transformations
-        vertexData = try root.decode(VertexData.self, forKey: .vertexData)
+        vertexData = (try? root.decode(VertexData.self, forKey: .vertexData)) ?? .init()
         texCoorData = (try? root.decode(TexCoordData.self, forKey: .texCoordData)) ?? .init()
-        print("texCoorData: \(texCoorData)")
         transformations = try root.decodeIfPresent(Transformations.self, forKey: .transformations) ?? .init()
-
         // Objects (Sphere, Triangle, Mesh, Plane, MeshInstance)
         if let objContainer = try? root.nestedContainer(keyedBy: DynamicCodingKeys.self, forKey: .objects) {
             func decodeList<T: SceneObject>(_ keyName: String, _ type: T.Type) {
@@ -180,6 +177,11 @@ extension Scene {
                         let S = Mat4(scaling: Vec3(xyz[0], xyz[1], xyz[2]))
                         M = S * M
                     }
+                }
+            } else if tok.hasPrefix("c") {
+                let key = String(tok.dropFirst())
+                if let s = transformations.composite.first(where: { $0.id == key }) {
+                    return s.matrix
                 }
             }
         }

@@ -18,7 +18,6 @@ public final class Triangle: SceneObject {
     public var uv0: Vec2 = .zero
     public var uv1: Vec2 = .zero
     public var uv2: Vec2 = .zero
-    public var ltw: Mat4 = .identity
     public var centroid: Vec3 = .zero
     public var resetTransform: Bool = false
     public var transformTokens: String?

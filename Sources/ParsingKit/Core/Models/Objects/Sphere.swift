@@ -12,7 +12,6 @@ public final class Sphere: SceneObject {
     public var resetTransform: Bool = false
     public var transformTokens: String?
     public var textures: String = ""
-    public var ltw: Mat4 = .identity
 
     public required init(from decoder: Decoder) throws {
         super.init()

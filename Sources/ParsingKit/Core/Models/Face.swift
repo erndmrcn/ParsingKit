@@ -9,6 +9,8 @@ public struct Face {
     public var plyPath: String?
     public var data: [Int] = []
     public var type: String?
+    public var vertexOffset: Int = 0
+    public var textureOffset: Int = 0
 
     public init() {
         plyPath = nil
@@ -23,6 +25,8 @@ extension Face {
         case data = "_data"
         case type = "_type"
         case plyPath = "_plyFile"
+        case textureOffset = "_textureOffset"
+        case vertexOffset = "_vertexOffset"
     }
 }
 
@@ -40,5 +44,7 @@ extension Face: Decodable {
             let lines = s.split(whereSeparator: \.isWhitespace)
             data = lines.compactMap { Int($0) }
         }
+        textureOffset = Int((try? root.decode(String.self, forKey: .textureOffset)) ?? "0") ?? textureOffset
+        vertexOffset = Int((try? root.decode(String.self, forKey: .vertexOffset)) ?? "0") ?? vertexOffset
     }
 }

@@ -9,6 +9,7 @@ public struct Transformations {
     var translations: [Translation] = []
     var rotations: [Rotation] = []
     var scalings: [Scale] = []
+    var composite: [CompositeTransform] = []
 }
 
 // MARK: Coding Keys
@@ -17,6 +18,7 @@ extension Transformations {
         case translations = "Translation"
         case rotations = "Rotation"
         case scalings = "Scaling"
+        case composite = "Composite"
     }
 }
 
@@ -27,6 +29,7 @@ extension Transformations: Decodable {
         self.translations = (try? container.decode([Translation].self, forKey: .translations)) ?? [(try? container.decode(Translation.self, forKey: .translations)) ?? .init()]
         self.rotations = (try? container.decode([Rotation].self, forKey: .rotations)) ?? [(try? container.decode(Rotation.self, forKey: .rotations)) ?? .init()]
         self.scalings = (try? container.decode([Scale].self, forKey: .scalings)) ?? [(try? container.decode(Scale.self, forKey: .scalings)) ?? .init()]
+        self.composite = (try? container.decode([CompositeTransform].self, forKey: .composite)) ?? [(try? container.decode(CompositeTransform.self, forKey: .composite)) ?? .init()]
     }
 }
 

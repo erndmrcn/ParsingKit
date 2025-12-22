@@ -8,6 +8,8 @@
 public struct TexCoordData {
     public var data: [Vec2] = []
     public var type: String = ""
+    public var vertexOffset: Int = 0
+    public var textureOffset: Int = 0
 }
 
 // MARK: - Coding Keys
@@ -15,6 +17,8 @@ extension TexCoordData {
     enum CodingKeys: String, CodingKey {
         case data = "_data"
         case type = "_type"
+        case textureOffset = "_textureOffset"
+        case vertexOffset = "_vertexOffset"
     }
 }
 
@@ -33,5 +37,8 @@ extension TexCoordData: Decodable {
         } else if let arr = try? root.decode([[Scalar]].self, forKey: .data) {
             data = arr.compactMap { $0.count >= 2 ? Vec2($0[0], $0[1]) : nil }
         }
+
+        textureOffset = Int((try? root.decode(String.self, forKey: .textureOffset)) ?? "0") ?? textureOffset
+        vertexOffset = Int((try? root.decode(String.self, forKey: .vertexOffset)) ?? "0") ?? vertexOffset
     }
 }

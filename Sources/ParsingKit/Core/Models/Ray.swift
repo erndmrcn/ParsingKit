@@ -22,6 +22,12 @@ public struct Hit: Sendable {
     public var bitangent: Vec3 = .zero
     public var uv: SIMD2<Scalar> = .zero
     public var bary: SIMD3<Scalar> = .zero  // (u,v,w) for triangles
+    public var dpdx: Vec3 = .zero
+    public var dpdy: Vec3 = .zero
+    public var dudx: Scalar = .zero
+    public var dvdx: Scalar = .zero
+    public var dudy: Scalar = .zero
+    public var dvdy: Scalar = .zero
 
     @inline(__always)
     public mutating func reset() {
@@ -48,6 +54,12 @@ public struct Hit: Sendable {
     @inline(__always) public var time: Scalar = 0
     @inline(__always) public var tMin = Scalar(0)
     @inline(__always) public var ltw: Mat4 = .identity
+
+    @inline(__always) public var hasDifferentials: Bool = false
+    @inline(__always) public var rxOrigin: Vec3 = .zero
+    @inline(__always) public var ryOrigin: Vec3 = .zero
+    @inline(__always) public var rxDir: Vec3 = .zero
+    @inline(__always) public var ryDir: Vec3 = .zero
 
     public init(origin: Vec3, dir: Vec3, tMax: Scalar = .infinity, time: Scalar = 0) {
         self.origin = origin

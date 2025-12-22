@@ -11,6 +11,7 @@ public final class Plane: SceneObject {
     public var normal: Vec3 = .zero
     public var resetTransform: Bool = false
     public var transformTokens: String?
+    public var textures: String = ""
 
     public required init(from decoder: Decoder) throws {
         super.init()
@@ -21,6 +22,8 @@ public final class Plane: SceneObject {
         self.normal  = Self.decodeVec3(c, .normal) ?? .zero
         self.transformTokens = (try? c.decode(String.self, forKey: .transformTokens)) ?? ""
         self.resetTransform = ((try? c.decode(String.self, forKey: .resetTransform)) ?? "false") == "true" ? true : false
+        self.textures = (try? c.decode(String.self, forKey: .textures)) ?? ""
+
     }
 
     public required init() {
@@ -37,6 +40,7 @@ extension Plane {
         case normal = "Normal"
         case resetTransform = "_resetTransform"
         case transformTokens = "Transformations"
+        case textures = "Textures"
     }
 }
 
