@@ -5,9 +5,12 @@
 //  Created by Eren Demircan on 1.11.2025.
 //
 
+import math_h
+
 public struct Material: @unchecked Sendable {
     public var id: String? = nil
     public var type: String? = nil
+    public var degamma: Bool = false
     public var ambient:  Vec3 = .zero
     public var diffuse:  Vec3 = .zero
     public var specular: Vec3 = .zero
@@ -31,6 +34,7 @@ extension Material {
         case absorption = "AbsorptionCoefficient"
         case absorptionIndex = "AbsorptionIndex"
         case roughness = "Roughness"
+        case degamma = "_degamma"
     }
 }
 
@@ -40,9 +44,17 @@ extension Material: Decodable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         self.id   = try? c.decode(String.self, forKey: .id)
         self.type = try? c.decode(String.self, forKey: .type)
+        self.degamma = (try? c.decode(String.self, forKey: .degamma) ?? "false") == "true" ? true : false
         ambient   = Self.decodeVec3(c, .ambient)   ?? ambient
         diffuse   = Self.decodeVec3(c, .diffuse)   ?? diffuse
         specular  = Self.decodeVec3(c, .specular)  ?? specular
+
+        if degamma {
+            ambient = srgbToLinear(ambient)
+            diffuse = srgbToLinear(diffuse)
+            specular = srgbToLinear(specular)
+        }
+
         phong     = Scalar((try? c.decode(String.self, forKey: .phong)) ?? "1.0") ?? 1.0
         roughness     = Scalar((try? c.decode(String.self, forKey: .roughness)) ?? "0.0") ?? self.roughness
         mirror    = Self.decodeVec3(c, .mirror)    ?? mirror
@@ -53,6 +65,15 @@ extension Material: Decodable {
         }
     }
 
+    @inline(__always)
+    func srgbToLinear(_ c: Float) -> Float {
+        pow(c, 2.2)
+    }
+
+    func srgbToLinear(_ v: SIMD3<Float>) -> SIMD3<Float> {
+        SIMD3(srgbToLinear(v.x), srgbToLinear(v.y), srgbToLinear(v.z))
+    }
+    
     static func decodeVec3(_ c: KeyedDecodingContainer<CodingKeys>, _ k: CodingKeys) -> Vec3? {
         if let s = try? c.decode(String.self, forKey: k) {
             let comps = s.split{ $0 == " " || $0 == "\t" }.compactMap(Scalar.init)

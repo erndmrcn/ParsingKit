@@ -68,11 +68,18 @@ extension Mat4 {
                 )
             )
         }
+
         self.init(
             Vec4(values[0],  values[4],  values[8],  values[12]),
             Vec4(values[1],  values[5],  values[9],  values[13]),
             Vec4(values[2],  values[6],  values[10], values[14]),
             Vec4(values[3],  values[7],  values[11], values[15])
         )
+    }
+}
+
+public extension Vec3 {
+    var padded: Vec4 {
+        Vec4(self, 0)
     }
 }

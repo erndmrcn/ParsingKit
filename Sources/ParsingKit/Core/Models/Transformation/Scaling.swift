@@ -6,8 +6,8 @@
 //
 
 public struct Scale {
-    var id: String = ""
-    var data: String = ""
+    public var id: String = ""
+    public var data: String = ""
 
 }
 

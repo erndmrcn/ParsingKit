@@ -6,8 +6,8 @@
 //
 
 public struct Rotation {
-    var id: String = ""
-    var data: String = ""
+    public var id: String = ""
+    public var data: String = ""
 }
 
 // MARK: - Coding Keys

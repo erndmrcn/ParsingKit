@@ -16,6 +16,7 @@ public class MeshInstance: SceneObject, Sendable {
         super.init()
         let c = try decoder.container(keyedBy: CodingKeys.self)
         self.id       = (try? c.decode(String.self, forKey: .id)) ?? self.id
+        self.id = "Instance \(id)"
         self.baseMeshID = (try? c.decode(String.self, forKey: .baseMeshID)) ?? self.baseMeshID
         self.material = (try? c.decode(String.self, forKey: .material)) ?? ""
         self.transformTokens = (try? c.decode(String.self, forKey: .transformTokens)) ?? ""

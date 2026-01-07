@@ -34,13 +34,13 @@ public struct Texture: Decodable {
     }
 }
 
-public enum TextureType: String, Decodable {
+public enum TextureType: String, Decodable, Hashable {
     case image
     case checkerboard
     case perlin
 }
 
-public enum DecalMode: String, Decodable {
+public enum DecalMode: String, Decodable, Hashable {
     case replace_kd
     case replace_ks
     case replace_normal
@@ -50,7 +50,7 @@ public enum DecalMode: String, Decodable {
     case replace_background
 }
 
-public enum Interpolation: String, Decodable {
+public enum Interpolation: String, Decodable, Hashable {
     case bilinear
     case trilinear
     case nearest

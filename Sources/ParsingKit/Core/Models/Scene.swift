@@ -149,7 +149,6 @@ extension Scene {
         guard let tokens, !tokens.isEmpty else { return base }
 
         var M = reset ? .identity : base
-
         for tok in tokens.split(separator: " ") {
             if tok.hasPrefix("t") {
                 let key = String(tok.dropFirst())
@@ -181,7 +180,7 @@ extension Scene {
             } else if tok.hasPrefix("c") {
                 let key = String(tok.dropFirst())
                 if let s = transformations.composite.first(where: { $0.id == key }) {
-                    return s.matrix
+                    M = s.matrix * M
                 }
             }
         }

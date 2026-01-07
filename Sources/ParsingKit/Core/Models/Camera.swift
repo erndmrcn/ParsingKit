@@ -8,7 +8,22 @@
 import Foundation
 import simd
 
+public struct Res: Hashable {
+    public var x: Int
+    public var y: Int
+}
+
+extension Mat4: Hashable {
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(self)
+    }
+}
+
 public struct Camera {
+    public static func == (lhs: Camera, rhs: Camera) -> Bool {
+        lhs.id == rhs.id
+    }
+    
     public var id: String? = nil
     public var type: String? = nil
     public var fovy: Scalar? = .zero
@@ -18,13 +33,14 @@ public struct Camera {
     public var up: Vec3 = .zero
     public var nearPlane: [Scalar] = [-1, 1, -1, 1]
     public var nearDistance: Scalar = 1
-    public var imageResolution: (Int, Int) = (512, 512)
+    public var imageResolution: Res = .init(x: 512, y: 512)
     public var numSamples: Int = 1
     public var imageName: String = "image.png"
     public var transformTokens: String?
     public var transformationMatrix: Mat4 = .identity
     public var focusDistance: Scalar = .zero
     public var apertureSize: Scalar = .zero
+    public var tonemap: [Tonemap] = []
 }
 
 // MARK: - Coding Keys
@@ -45,6 +61,7 @@ extension Camera {
         case transformations = "Transformations"
         case focusDistance = "FocusDistance"
         case apertureSize = "ApertureSize"
+        case tonemap = "Tonemap"
     }
 }
 
@@ -70,14 +87,20 @@ extension Camera: Decodable {
 
         if let s = try? c.decode(String.self, forKey: .imageResolution) {
             let comps = s.split{ $0 == " " || $0 == "\t" }.compactMap { Int($0) }
-            if comps.count >= 2 { imageResolution = (comps[0], comps[1]) }
+            if comps.count >= 2 { imageResolution = .init(x: comps[0], y: comps[1]) }
         } else if let arr = try? c.decode([Int].self, forKey: .imageResolution), arr.count >= 2 {
-            imageResolution = (arr[0], arr[1])
+            imageResolution = .init(x: arr[0], y: arr[1])
         }
 
         self.numSamples = Int((try? c.decode(String.self, forKey: .numSamples)) ?? "1") ?? numSamples
         self.nearDistance = Scalar((try? c.decode(String.self, forKey: .nearDistance)) ?? "1") ?? self.nearDistance
         self.imageName  = (try? c.decode(String.self, forKey: .imageName)) ?? self.imageName
+
+        if let arr = try? c.decode([Tonemap].self, forKey: .tonemap) {
+            tonemap += arr
+        } else if let one = try? c.decode(Tonemap.self, forKey: .tonemap) {
+            tonemap += [one]
+        }
     }
 
     static func decodeVec3(_ c: KeyedDecodingContainer<CodingKeys>, _ k: CodingKeys) -> Vec3? {
@@ -115,5 +138,60 @@ extension Camera {
 
         let dir = simd_normalize(px * u + py * v + w)
         return Ray(origin: origin, dir: dir)
+    }
+}
+
+public enum ToneMapOperation: String, Decodable, CaseIterable, Hashable {
+    case photographic = "Photographic"
+    case filmic = "Filmic"
+    case aces = "ACES"
+    case none = "None"
+}
+
+// MARK: - Tonemap
+public struct Tonemap {
+    public var operation: ToneMapOperation = .photographic
+    public var options: Vec2 = .zero
+    public var saturation: Scalar = .zero
+    public var gamma: Scalar = .zero
+    public var ext: String = ""
+}
+
+extension Tonemap {
+    enum CodingKeys: String, CodingKey {
+        case operation = "TMO"
+        case options = "TMOOptions"
+        case saturation = "Saturation"
+        case gamma = "Gamma"
+        case ext = "Extension"
+    }
+}
+
+extension Tonemap: Identifiable {
+    public var title: String {
+        operation.rawValue + ext
+    }
+
+    public var id: String { title }
+}
+
+extension Tonemap: Decodable {
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        operation = (try? c.decode(ToneMapOperation.self, forKey: .operation) ?? .photographic) ?? .photographic
+        options = Self.decodeVec2(c, .options) ?? .zero
+        saturation = Scalar(try c.decode(String.self, forKey: .saturation) ?? "0") ?? 1
+        gamma = Scalar(try c.decode(String.self, forKey: .gamma) ?? "0") ?? 1
+        ext = (try? c.decode(String.self, forKey: .ext) ?? "") ?? ""
+    }
+
+    static func decodeVec2(_ c: KeyedDecodingContainer<CodingKeys>, _ k: CodingKeys) -> Vec2? {
+        if let s = try? c.decode(String.self, forKey: k) {
+            let comps = s.split{ $0 == " " || $0 == "\t" }.compactMap(Scalar.init)
+            if comps.count >= 2 { return Vec2(comps[0], comps[1]) }
+        } else if let arr = try? c.decode([Scalar].self, forKey: k), arr.count >= 2 {
+            return Vec2(arr[0], arr[1])
+        }
+        return nil
     }
 }

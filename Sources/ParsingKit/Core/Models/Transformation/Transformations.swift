@@ -6,10 +6,10 @@
 //
 
 public struct Transformations {
-    var translations: [Translation] = []
-    var rotations: [Rotation] = []
-    var scalings: [Scale] = []
-    var composite: [CompositeTransform] = []
+    public var translations: [Translation] = []
+    public var rotations: [Rotation] = []
+    public var scalings: [Scale] = []
+    public var composite: [CompositeTransform] = []
 }
 
 // MARK: Coding Keys

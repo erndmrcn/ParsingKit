@@ -4,7 +4,7 @@ import PackageDescription
 let package = Package(
     name: "ParsingKit",
     defaultLocalization: "en",
-    platforms: [ .iOS(.v14), .macOS(.v12), .tvOS(.v14) ],
+    platforms: [ .iOS(.v14), .macOS(.v13), .tvOS(.v14) ],
     products: [ .library(name: "ParsingKit", targets: ["ParsingKit"]) ],
     dependencies: [
         .package(url: "https://github.com/CoreOffice/XMLCoder.git", from: "0.17.1")
@@ -15,9 +15,11 @@ let package = Package(
             dependencies: [
                 .product(name: "XMLCoder", package: "XMLCoder")
             ],
-            path: "Sources/ParsingKit",
+            path: "Sources",
             swiftSettings: [
-                .define("PARSINGKIT_SIMD_DOUBLE", .when(configuration: .release))
+//                .unsafeFlags(["-Ounchecked"]),
+                .define("SCALAR_IS_FLOAT", .when(configuration: .release)),
+                .define("SCALAR_IS_FLOAT", .when(configuration: .debug))
             ]
         )
     ]
