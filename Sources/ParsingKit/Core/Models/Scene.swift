@@ -8,21 +8,27 @@
 import Foundation
 import simd
 
-public struct Scene: @unchecked Sendable {
+public struct Scene: @unchecked Sendable, Equatable {
+    public static func == (lhs: Scene, rhs: Scene) -> Bool {
+        lhs.cameras.first?.id == lhs.cameras.first?.id
+    }
+
     public var path: URL?
     // global settings
     public var maxRecursionDepth: Int = 6
     public var backgroundColor: Vec3 = .zero
     public var shadowRayEpsilon: Scalar = 1e-3
-    public var intersectionTestEpsilon: Scalar = 0
+    public var intersectionTestEpsilon: Scalar = 1e-6
 
     // data
     public var cameras: [Camera] = []
     public var lights: Lights = Lights(ambient: Vec3.zero, points: [])
+    public var brdfs: BRDF = .init()
     public var materials: [Material] = []
     public var vertexData: VertexData
     public var texCoorData: TexCoordData
     public var transformations: Transformations
+    public var zeroBasedIndexing: Bool?
     public var textures: Texture?
 
     // objects
@@ -44,6 +50,10 @@ extension Scene {
         case objects = "Objects"
         case transformations = "Transformations"
         case texture = "Textures"
+        case brdf = "BRDFs"
+        case lightMesh = "LightMesh"
+        case lightSphere = "LightSphere"
+        case zeroBasedIndexing = "ZeroBasedIndexing"
     }
 }
 
@@ -60,6 +70,7 @@ extension Scene: Decodable {
 
         // Scalars
         maxRecursionDepth = (try? root.decode(Int.self, forKey: .maxRecursionDepth)) ?? maxRecursionDepth
+        zeroBasedIndexing = ((try? root.decode(String.self, forKey: .zeroBasedIndexing)) ?? "false") == "true"
         if let s = try? root.decode(String.self, forKey: .shadowRayEpsilon) { shadowRayEpsilon = Scalar(s) ?? shadowRayEpsilon }
         if let s = try? root.decode(String.self, forKey: .intersectionTestEpsilon) { intersectionTestEpsilon = Scalar(s) ?? intersectionTestEpsilon }
 
@@ -74,6 +85,7 @@ extension Scene: Decodable {
 
         // Lights
         lights = (try? root.decode(Lights.self, forKey: .lights)) ?? lights
+        brdfs = (try? root.decode(BRDF.self, forKey: .brdf)) ?? brdfs
         textures = (try? root.decode(Texture.self, forKey: .texture))
         // Materials
         if let matsContainer = try? root.nestedContainer(keyedBy: DynamicCodingKeys.self, forKey: .materials) {
@@ -99,10 +111,12 @@ extension Scene: Decodable {
                 }
             }
 
+            decodeList("LightSphere", LightSphere.self)
             decodeList("Sphere", Sphere.self)
             decodeList("Triangle", Triangle.self)
             decodeList("Mesh", Mesh.self)
             decodeList("Plane", Plane.self)
+            decodeList("LightMesh", LightMesh.self)
             decodeList("MeshInstance", MeshInstance.self)
         }
 
@@ -147,7 +161,6 @@ extension Scene: Decodable {
 extension Scene {
     public func composeTransform(tokens: String?, reset: Bool, base: Mat4) -> Mat4 {
         guard let tokens, !tokens.isEmpty else { return base }
-
         var M = reset ? .identity : base
         for tok in tokens.split(separator: " ") {
             if tok.hasPrefix("t") {
@@ -183,6 +196,9 @@ extension Scene {
                     M = s.matrix * M
                 }
             }
+        }
+        if tokens == "c4" {
+            print("Here")
         }
         return M
     }

@@ -76,6 +76,7 @@ public struct TextureMap: Decodable {
     public let scale: Scalar
     public let offset: Scalar
     public let numOctaves: Scalar
+    public let degamma: Bool
 
     public init(from decoder: any Decoder) throws {
         let root = try decoder.container(keyedBy: CodingKeys.self)
@@ -92,6 +93,7 @@ public struct TextureMap: Decodable {
         self.scale = (Scalar((try? root.decode(String.self, forKey: .scale)) ?? "1")) ?? 1
         self.offset = (Scalar((try? root.decode(String.self, forKey: .offset)) ?? "0")) ?? 0
         self.numOctaves = (Scalar((try? root.decode(String.self, forKey: .numOctave)) ?? "1")) ?? 1
+        self.degamma = (Bool((try? root.decode(String.self, forKey: .degamma)) ?? "false")) ?? false
         self.blackColor = Self.decodeVec3(root, .blackColor) ?? .zero
         self.whiteColor = Self.decodeVec3(root, .whiteColor) ?? .zero
     }
@@ -114,6 +116,7 @@ extension TextureMap {
         case scale = "Scale"
         case offset = "Offset"
         case numOctave = "NumOctaves"
+        case degamma = "_degamma"
     }
 }
 

@@ -23,6 +23,7 @@ public struct Material: @unchecked Sendable {
     public var roughness: Scalar = 0
     public var radiance: Vec3 = .zero
     public var isEmissive: Bool { !(radiance == .zero) }
+    public var brdf: Int = .zero
 }
 
 // MARK: - Coding Keys
@@ -35,6 +36,7 @@ extension Material {
         case absorptionIndex = "AbsorptionIndex"
         case roughness = "Roughness"
         case degamma = "_degamma"
+        case brdf = "_BRDF"
     }
 }
 
@@ -56,6 +58,7 @@ extension Material: Decodable {
         }
 
         phong     = Scalar((try? c.decode(String.self, forKey: .phong)) ?? "1.0") ?? 1.0
+        brdf     = Int((try? c.decode(String.self, forKey: .brdf)) ?? "0") ?? 0
         roughness     = Scalar((try? c.decode(String.self, forKey: .roughness)) ?? "0.0") ?? self.roughness
         mirror    = Self.decodeVec3(c, .mirror)    ?? mirror
         ior       = Scalar((try? c.decode(String.self, forKey: .ior)) ?? "0.0") ?? self.ior

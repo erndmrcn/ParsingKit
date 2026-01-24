@@ -8,6 +8,7 @@
 public struct VertexData {
     public var data: [Vec3] = []
     public var type: String = ""
+    public var binaryFile: String?
 }
 
 // MARK: - Coding Keys
@@ -15,6 +16,7 @@ extension VertexData {
     enum CodingKeys: String, CodingKey {
         case data = "_data"
         case type = "_type"
+        case binaryFile = "_binaryFile"
     }
 }
 
@@ -32,5 +34,7 @@ extension VertexData: Decodable {
         } else if let arr = try? root.decode([[Scalar]].self, forKey: .data) {
             data = arr.compactMap { $0.count >= 3 ? Vec3($0[0], $0[1], $0[2]) : nil }
         }
+
+        binaryFile = (try? root.decode(String.self, forKey: .binaryFile) ?? "") ?? ""
     }
 }

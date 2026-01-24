@@ -10,6 +10,7 @@ public struct TexCoordData {
     public var type: String = ""
     public var vertexOffset: Int = 0
     public var textureOffset: Int = 0
+    public var binaryFile: String?
 }
 
 // MARK: - Coding Keys
@@ -19,6 +20,7 @@ extension TexCoordData {
         case type = "_type"
         case textureOffset = "_textureOffset"
         case vertexOffset = "_vertexOffset"
+        case binaryFile = "_binaryFile"
     }
 }
 
@@ -40,5 +42,6 @@ extension TexCoordData: Decodable {
 
         textureOffset = Int((try? root.decode(String.self, forKey: .textureOffset)) ?? "0") ?? textureOffset
         vertexOffset = Int((try? root.decode(String.self, forKey: .vertexOffset)) ?? "0") ?? vertexOffset
+        binaryFile = (try? root.decode(String.self, forKey: .binaryFile) ?? "") ?? ""
     }
 }

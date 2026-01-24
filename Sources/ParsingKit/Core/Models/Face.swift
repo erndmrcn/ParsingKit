@@ -7,6 +7,7 @@
 
 public struct Face {
     public var plyPath: String?
+    public var binaryPath: String?
     public var data: [Int] = []
     public var type: String?
     public var vertexOffset: Int = 0
@@ -25,6 +26,7 @@ extension Face {
         case data = "_data"
         case type = "_type"
         case plyPath = "_plyFile"
+        case binaryPath = "_binaryFile"
         case textureOffset = "_textureOffset"
         case vertexOffset = "_vertexOffset"
     }
@@ -37,6 +39,7 @@ extension Face: Decodable {
 
         type = try? root.decode(String.self, forKey: .type) ?? type
         plyPath = try? root.decode(String.self, forKey: .plyPath)
+        binaryPath = try? root.decode(String.self, forKey: .binaryPath)
 
         if let arr2D = try? root.decode([Int].self, forKey: .data) {
             data = arr2D

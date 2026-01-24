@@ -39,7 +39,30 @@ public extension Mat4 {
     }
 }
 
-public extension Vec3 { init(repeating v: Scalar) { self.init(v, v, v) } }
+public extension Vec3 {
+    init(repeating v: Scalar) {
+        self.init(v, v, v)
+    }
+
+    mutating func normalizeIfNeeded() {
+        var normalize = false
+        if x > 255 {
+            normalize = true
+        }
+
+        if y > 255 {
+            normalize = true
+        }
+
+        if z > 255 {
+            normalize = true
+        }
+
+        self /= (normalize ? 255 : 1)
+//        self /= length(self)
+    }
+}
+
 @inlinable public func min(_ a: Vec3, _ b: Vec3) -> Vec3 { simd.min(a, b) }
 @inlinable public func max(_ a: Vec3, _ b: Vec3) -> Vec3 { simd.max(a, b) }
 
@@ -81,5 +104,11 @@ extension Mat4 {
 public extension Vec3 {
     var padded: Vec4 {
         Vec4(self, 0)
+    }
+}
+
+public extension Vec4 {
+    var xyz: Vec3 {
+        Vec3(x, y, z)
     }
 }

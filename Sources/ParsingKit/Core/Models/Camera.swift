@@ -8,6 +8,45 @@
 import Foundation
 import simd
 
+public struct PathTracerOptions: OptionSet {
+    public let rawValue: Int
+
+    public init(rawValue: Int) {
+        self.rawValue = rawValue
+    }
+    static let importanceSampling = PathTracerOptions(rawValue: 1 << 0) // cosine hemisphere
+    static let nextEventEstimation = PathTracerOptions(rawValue: 1 << 1)
+    static let misBalance = PathTracerOptions(rawValue: 1 << 2)
+    static let misPower = PathTracerOptions(rawValue: 1 << 3)
+    static let mis01 = PathTracerOptions(rawValue: 1 << 4)
+    static let russianRoulette = PathTracerOptions(rawValue: 1 << 5)
+}
+
+public extension PathTracerOptions {
+
+    /// Matches ShaderTypes.h:
+    /// RP_IMPORTANCE_SAMPLING = 1<<0
+    /// RP_NEE                 = 1<<1
+    /// RP_RUSSIAN_ROULETTE    = 1<<2
+    func toGPUFlags() -> UInt32 {
+        var f: UInt32 = 0
+        if contains(.importanceSampling)   { f |= (1 << 0) } // RP_IMPORTANCE_SAMPLING
+        if contains(.nextEventEstimation)  { f |= (1 << 1) } // RP_NEE
+        if contains(.russianRoulette)      { f |= (1 << 2) } // RP_RUSSIAN_ROULETTE
+        return f
+    }
+
+    /// Matches your RendererParamsGPU.misHeuristic:
+    /// 0 = balance, 1 = power, 2 = 01
+    func toGPUMISHeuristic() -> UInt32 {
+        // If multiple are present, pick a priority deterministically
+        if contains(.mis01)    { return 2 }
+        if contains(.misPower) { return 1 }
+        // default (including .misBalance or none)
+        return 0
+    }
+}
+
 public struct Res: Hashable {
     public var x: Int
     public var y: Int
@@ -19,6 +58,11 @@ extension Mat4: Hashable {
     }
 }
 
+public enum RendererType: String, Decodable {
+    case raytracer = "RayTracing"
+    case pathtracer = "PathTracing"
+}
+
 public struct Camera {
     public static func == (lhs: Camera, rhs: Camera) -> Bool {
         lhs.id == rhs.id
@@ -26,6 +70,7 @@ public struct Camera {
     
     public var id: String? = nil
     public var type: String? = nil
+    public var handedness: String? = nil
     public var fovy: Scalar? = .zero
     public var position: Vec3 = .zero
     public var gaze: Vec3 = .zero
@@ -35,12 +80,19 @@ public struct Camera {
     public var nearDistance: Scalar = 1
     public var imageResolution: Res = .init(x: 512, y: 512)
     public var numSamples: Int = 1
+    public var maxRecursionDepth: Int = 0
+    public var minRecursionDepth: Int = 0
     public var imageName: String = "image.png"
     public var transformTokens: String?
     public var transformationMatrix: Mat4 = .identity
     public var focusDistance: Scalar = .zero
     public var apertureSize: Scalar = .zero
     public var tonemap: [Tonemap] = []
+    public var comment: String? = nil
+    public var renderer: RendererType = .raytracer
+    public var splittingFactor: Int = 1
+    public var rendererParams: String? = nil
+    public var pathTracerOptions: PathTracerOptions? = nil
 }
 
 // MARK: - Coding Keys
@@ -48,6 +100,7 @@ extension Camera {
     enum CodingKeys: String, CodingKey {
         case id = "_id"
         case type = "_type"
+        case handedness = "_handedness"
         case fovy = "FovY"
         case position = "Position"
         case gaze = "Gaze"
@@ -57,11 +110,17 @@ extension Camera {
         case nearDistance = "NearDistance"
         case imageResolution = "ImageResolution"
         case numSamples = "NumSamples"
+        case maxRecursionDepth = "MaxRecursionDepth"
         case imageName = "ImageName"
         case transformations = "Transformations"
         case focusDistance = "FocusDistance"
         case apertureSize = "ApertureSize"
         case tonemap = "Tonemap"
+        case minRecursionDepth = "MinRecursionDepth"
+        case comment = "Comment"
+        case renderer = "Renderer"
+        case rendererParams = "RendererParams"
+        case splittingFactor = "SplittingFactor"
     }
 }
 
@@ -71,6 +130,7 @@ extension Camera: Decodable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         self.id = try? c.decode(String.self, forKey: .id)
         self.type = try? c.decode(String.self, forKey: .type)
+        self.handedness = try? c.decode(String.self, forKey: .handedness)
         self.fovy = Scalar((try? c.decode(String.self, forKey: .fovy)) ?? "0") ?? .zero
         self.apertureSize = Scalar((try? c.decode(String.self, forKey: .apertureSize)) ?? "0") ?? .zero
         self.focusDistance = Scalar((try? c.decode(String.self, forKey: .focusDistance)) ?? "0") ?? .zero
@@ -93,7 +153,13 @@ extension Camera: Decodable {
         }
 
         self.numSamples = Int((try? c.decode(String.self, forKey: .numSamples)) ?? "1") ?? numSamples
+        self.maxRecursionDepth = Int((try? c.decode(String.self, forKey: .maxRecursionDepth)) ?? "1") ?? maxRecursionDepth
+        self.minRecursionDepth = Int((try? c.decode(String.self, forKey: .minRecursionDepth)) ?? "1") ?? minRecursionDepth
+        self.comment = try? c.decode(String.self, forKey: .comment)
+        self.rendererParams = try? c.decode(String.self, forKey: .rendererParams)
+        self.renderer = RendererType(rawValue: (try? c.decode(String.self, forKey: .renderer)) ?? "RayTracing") ?? .raytracer
         self.nearDistance = Scalar((try? c.decode(String.self, forKey: .nearDistance)) ?? "1") ?? self.nearDistance
+        self.splittingFactor = Int((try? c.decode(String.self, forKey: .splittingFactor)) ?? "1") ?? self.splittingFactor
         self.imageName  = (try? c.decode(String.self, forKey: .imageName)) ?? self.imageName
 
         if let arr = try? c.decode([Tonemap].self, forKey: .tonemap) {
@@ -101,6 +167,8 @@ extension Camera: Decodable {
         } else if let one = try? c.decode(Tonemap.self, forKey: .tonemap) {
             tonemap += [one]
         }
+
+        self.pathTracerOptions = parseRendererParams(rendererParams)
     }
 
     static func decodeVec3(_ c: KeyedDecodingContainer<CodingKeys>, _ k: CodingKeys) -> Vec3? {
@@ -111,6 +179,36 @@ extension Camera: Decodable {
             return Vec3(arr[0], arr[1], arr[2])
         }
         return nil
+    }
+
+    func parseRendererParams(_ s: String?) -> PathTracerOptions {
+        // Missing/empty => default path tracer (uniform sampling)
+        guard let s, !s.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return [] }
+
+        let tokens = s.split(whereSeparator: { $0 == " " || $0 == "\t" || $0 == "\n" })
+                     .map { String($0) }
+
+        var o: PathTracerOptions = []
+        for t in tokens {
+            switch t {
+            case "ImportanceSampling":
+                o.insert(.importanceSampling)
+            case "NextEventEstimation":
+                o.insert(.nextEventEstimation)
+            case "MIS_BALANCE":
+                o.insert(.misBalance)
+            case "MIS_POWER":
+                o.insert(.misPower)
+            case "MIS_01":
+                o.insert(.mis01)
+            case "RussianRoulette":
+                o.insert(.russianRoulette)
+            default:
+                // Unknown token: ignore (or log once)
+                break
+            }
+        }
+        return o
     }
 }
 

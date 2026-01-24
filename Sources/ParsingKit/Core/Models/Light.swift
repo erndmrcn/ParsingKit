@@ -89,6 +89,7 @@ extension PointLight: @unchecked Sendable, Decodable {
         id = try? c.decode(String.self, forKey: .id)
         position = Self.decodeVec3(c, .position) ?? .zero
         intensity = (Self.decodeVec3(c, .intensity) ?? .zero)
+//        intensity.normalizeIfNeeded()
     }
 
     static func decodeVec3(_ c: KeyedDecodingContainer<CodingKeys>, _ k: CodingKeys) -> Vec3? {
@@ -125,6 +126,7 @@ extension DirectionalLight: Decodable {
         id = try? c.decode(String.self, forKey: .id)
         direction = Self.decodeVec3(c, .direction) ?? .zero
         radiance = Self.decodeVec3(c, .radiance) ?? .zero
+//        radiance.normalizeIfNeeded()
     }
 
     static func decodeVec3(_ c: KeyedDecodingContainer<CodingKeys>, _ k: CodingKeys) -> Vec3? {
@@ -168,6 +170,7 @@ extension SpotLight: Decodable {
         position = Self.decodeVec3(c, .position) ?? .zero
         direction = Self.decodeVec3(c, .direction) ?? .zero
         intensity = Self.decodeVec3(c, .intensity) ?? .zero
+//        intensity.normalizeIfNeeded()
         coverageAngle = Scalar(try c.decode(String.self, forKey: .coverageAngle) ?? "0") ?? 1
         fallOfAngle = Scalar(try c.decode(String.self, forKey: .fallOfAngle) ?? "0") ?? 1
     }
@@ -250,6 +253,7 @@ extension AreaLight: Decodable {
         normal = Self.decodeVec3(c, .normal) ?? .zero
         size = Scalar(try c.decode(String.self, forKey: .size) ?? "0") ?? 1
         radiance = Self.decodeVec3(c, .radiance) ?? .zero
+//        radiance.normalizeIfNeeded()
     }
 
     static func decodeVec3(_ c: KeyedDecodingContainer<CodingKeys>, _ k: CodingKeys) -> Vec3? {
